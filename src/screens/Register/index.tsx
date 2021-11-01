@@ -96,6 +96,7 @@ export const Register = () => {
             await AsyncStorage.setItem(dataKey, JSON.stringify(currentData));
 
             handleResetForm();
+            //@ts-ignore
             navigation.navigate('Listagem');
             
         } catch (error) {
