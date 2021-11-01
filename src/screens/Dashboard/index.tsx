@@ -2,7 +2,10 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+
 import { useTheme } from 'styled-components';
+import { useAuth } from '../../hooks/auth';
+
 
 import { 
     Container,
@@ -29,7 +32,6 @@ import {
 } from '../../components';
 
 
-
 export type DataListProps = TransactionCardProps & {
     id: string
 }
@@ -46,14 +48,11 @@ type HighlightDataProps = {
 
 export function Dashboard() {   
     
+    const { user, logOut } = useAuth();
     const theme = useTheme();
     const [ data, setData ] = useState<DataListProps[]>()
     const [ highlightData, setHighlightData ] = useState<HighlightDataProps>({} as HighlightDataProps);
     const [ isLoading, setIsLoading ] = useState(true);
-
-    useEffect(() => {
-        loadTransactions();
-    },[]);
 
     useFocusEffect(useCallback(() => {
         loadTransactions();
@@ -61,37 +60,37 @@ export function Dashboard() {
 
     function getLastTransactionDate(transactions: DataListProps[], type: 'up' | 'down') {
         
-        const lastTransactions = Math.max.apply(Math, transactions
+        const lastTransactions = transactions
             .filter((item) => item.type === type)
-            .map((item) => new Date(item.date).getTime()))
-        
+            .pop();        
+            
+        if (!lastTransactions)
+            return false;
+
         const lastTransactionFormated = Intl.DateTimeFormat('pt-BR', { 
             day: '2-digit',
             month: 'long',
             year: 'numeric' 
-        }).format(new Date(lastTransactions));  
+        }).format(new Date(lastTransactions.date));  
 
         return lastTransactionFormated;
     }
 
     const loadTransactions = async () => {
-        const dataKey = '@gofinances:transactions';
-        //await AsyncStorage.removeItem(dataKey);
-        //return;
+        const dataKey = `@gofinances:transactions_user:${ user.id }`;
         const response = await AsyncStorage.getItem(dataKey);
         const transactions = response ? JSON.parse(response) : [];
 
         let entriesTotal = 0;
         let expensiveTotal  = 0
 
-        const transactionFormated: DataListProps[] = transactions.map((item: DataListProps) =>{
+        const transactionFormated: DataListProps[] = transactions.length === 0 ? [] : transactions.map((item: DataListProps) =>{
             
             if (item.type === 'up') {
                 entriesTotal += Number(item.amount)
             } else {
                 expensiveTotal += Number(item.amount);
-            }
-            
+            }            
 
             const amount = Number(item.amount).toLocaleString('pt-BR',{ 
                 style: 'currency', 
@@ -125,25 +124,29 @@ export function Dashboard() {
                     style: 'currency', 
                     currency: 'BRL'  
                 }),
-                date: `Última entrada ${lastTransactionEntries}`
+                date: lastTransactionEntries ? `Última entrada ${lastTransactionEntries}` : 'Não há transações'
             },
             expensive: {
                 amount: expensiveTotal.toLocaleString('pt-BR', { 
                     style: 'currency', 
                     currency: 'BRL'  
                 }),
-                date: `Última saída ${lastTransactionExpensives}`
+                date: lastTransactionExpensives ? `Última saída ${lastTransactionExpensives}` : 'Não há transações'
             },
             total: {
                 amount: (entriesTotal - expensiveTotal).toLocaleString('pt-BR', { 
                     style: 'currency', 
                     currency: 'BRL'  
                 }),
-                date: `01 à ${lastTransactionExpensives}`
+                date: lastTransactionExpensives ? `01 à ${lastTransactionExpensives}` : 'Não há transações'
             }
         })        
         setIsLoading(false);
         
+    }
+
+    function handleLogOut() {
+        logOut();
     }
     
     if (isLoading)
@@ -160,15 +163,15 @@ export function Dashboard() {
                 <UserWrapper>
                     
                     <UserInfo>
-                        <UserPhoto source={{ uri: 'https://avatars.githubusercontent.com/u/3328835?v=4' }} />
+                        <UserPhoto source={{ uri: user.photo }} />
                         <User>
                             <UserGreeting>Olá,</UserGreeting>
-                            <UserName>Pedro</UserName>
+                            <UserName>{ user.name.split(' ')[0] }</UserName>
                         </User>
                     </UserInfo>
                     
                     <LogoutButton
-                        onPress={() => alert('oi')}
+                        onPress={() => handleLogOut()}
                     >
                         <Icon name="power" />
                     </LogoutButton>

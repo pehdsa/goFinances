@@ -11,6 +11,9 @@ import { ptBR } from 'date-fns/locale';
 import { ActivityIndicator } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
+import { useAuth } from '../../hooks/auth';
+
+
 import {
     HistoryCard
 } from '../../components';
@@ -27,8 +30,6 @@ import {
     Mounth,
     LoadContainer
 } from './styles';
-
-
 
 type TransactionProps = {    
         type: 'up' | 'down';
@@ -48,8 +49,9 @@ type CategoryData = {
 }
 
 export const Resume = () => {
+
+    const { user } = useAuth();
     const theme = useTheme();
-    const navigation = useNavigation();
 
     const [ isLoading, setIsLoading ] = useState(true);
     const [ selectedDate, setSelectedDate ] = useState(new Date());
@@ -62,20 +64,13 @@ export const Resume = () => {
         else
             setSelectedDate(subMonths(selectedDate, 1));        
     }
-    /*
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
-            loadData();
-        });      
-        return unsubscribe;        
-    },[]);
-    */
+
     useFocusEffect(useCallback(() => {
         loadData();
     },[selectedDate]));
 
     async function loadData() {
-        const dataKey = '@gofinances:transactions';
+        const dataKey = `@gofinances:transactions_user:${ user.id }`;
         const response = await AsyncStorage.getItem(dataKey);
         const responseFormatted = response ? JSON.parse(response) : [];
 
